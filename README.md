@@ -13,6 +13,10 @@ highlighting its role in preserving the web by using the Internet Archive to men
 
 - Install this module using the [official Backdrop CMS instructions](https://backdropcms.org/guide/modules).
 
+## Issues
+
+Bugs and feature requests should be reported in the [Issue Queue](https://github.com/backdrop-contrib/wayback_filter/issues).
+
 ## Configuration
 
 The module allows you to configure how and when Wayback links should appear:
