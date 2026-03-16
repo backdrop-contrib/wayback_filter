@@ -1,0 +1,15 @@
+.wayback-link {
+  margin-left: 0.3em;
+  text-decoration: none;
+}
+.wayback-icon {
+  width: 0.85em;
+  height: 0.85em;
+  vertical-align: middle;
+  position: relative;
+  top: -0.1em;
+  fill: currentColor;
+}
+.waybacklink_icon {
+  font-style: normal;
+}

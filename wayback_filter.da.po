@@ -1,6 +1,6 @@
 # $Id$
 #
-# Danish translation of Drupal (general)
+# Danish translation of Backdrop CMS (general)
 # Copyright YEAR NAME <EMAIL@ADDRESS>
 # Generated from files:
 #  wayback_filter.module: n/a
@@ -9,11 +9,12 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: PROJECT VERSION\n"
+"Project-Id-Version: Wayback Filter (Backdrop CMS)\n"
 "POT-Creation-Date: 2014-03-03 12:08+0100\n"
 "PO-Revision-Date: 2014-03-03 12:08+0100\n"
 "Last-Translator: NAME <EMAIL@ADDRESS>\n"
 "Language-Team: Danish <EMAIL@ADDRESS>\n"
+"Language: da\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -43,7 +44,7 @@ msgstr ""
 
 #: wayback_filter.module:101
 msgid "Wayback-link"
-msgstr ""
+msgstr "Wayback-link"
 
 #: wayback_filter.module:115
 msgid "Add links to Archive.org's Waybback Machine for URLs on old articles to ensure that the user can see something when pages have died."
@@ -69,23 +70,102 @@ msgstr "Vælg om der skal bruges en absolut skæringsdato eller en relativ alder
 msgid "Cutting date to use for the Wayback filter. Articles older than this date has the filter, younger articles don't."
 msgstr "Skæringsdator for Wayback Filter. Artikler ældre end denne dator får Wayback-links, yngre artikler gør ikke."
 
-#: wayback_filter.module:163
-msgid "Relative age for Wayback filter. Articles older than this number of years has the filter, younger articles don't."
-msgstr "Relativ alder for Wayback Filter. Artikler ældre end denne alder får Wayback-links, yngre artikler gør ikke."
+#: wayback_filter.module:161
+msgid "Wayback Filter settings"
+msgstr "Indstillinger for Wayback Filter"
 
-#: wayback_filter.module:30
-msgid "Wayback"
-msgstr ""
+#: wayback_filter.module:162
+msgid "Configuration"
+msgstr "Konfiguration"
 
-#: wayback_filter.module:31
-msgid "Set up Wayback filter."
-msgstr "Indstillinger for Wayback Filter."
+#: wayback_filter.module:183
+msgid "Add links to Archive.org's Wayback Machine for URLs on old articles to ensure that the user can see something when pages have died."
+msgstr "Tilføj links til Archive.org's Wayback Machine for URL'er på gamle artikler, så brugeren stadig kan se noget når den oprindelig side er død."
+
+#: wayback_filter.module:250
+msgid "Click to see an archived version of the destination page."
+msgstr "Klik for at se en arkiveret version af destinationssiden."
+
+#: wayback_filter.module:391
+msgid "Enter a Backdrop core icon name, an emoji, or plain text. HTML is not supported."
+msgstr "Indtast et Backdrop-kerneikonnavn, en emoji eller almindelig tekst. HTML understøttes ikke."
+
+#: wayback_filter.module:405
+msgid "Wayback link behaviour"
+msgstr "Wayback-linkadfærd"
+
+#: wayback_filter.module:407
+msgid "Append the Wayback Link (recommended)"
+msgstr "Tilføj Wayback-linket efter det oprindelige link (anbefalet)"
+
+#: wayback_filter.module:408
+msgid "Replace the original link with the Wayback Link"
+msgstr "Erstat det oprindelige link med Wayback-linket"
+
+#: wayback_filter.module:411
+msgid "Choose whether to add a Wayback link after the original link, or replace the original link entirely."
+msgstr "Vælg om der skal tilføjes et Wayback-link efter det oprindelige link, eller om det oprindelige link skal erstattes helt."
+
+#: wayback_filter.module:416
+msgid "Icon or text for the Wayback link"
+msgstr "Ikon eller tekst til Wayback-linket"
+
+#: wayback_filter.module:420
+msgid "Enter a <a href=\"@icon_api\">Backdrop core icon name</a>, an emoji, a Unicode character, or plain text. HTML is not supported.<br />Recommended icons from <em>core/misc/icons</em>: <strong>archive</strong>, <strong>clock-counter-clockwise</strong>, <strong>rewind</strong>, or <strong>hourglass</strong>. <br />Alternatively, you can use emojis like <a href=\"@classical_building\">🏛️</a> (classical building), <a href=\"@floppy\">💾</a> (floppy disk), or <a href=\"@circlearrow\">⟲</a> (circle arrow)."
+msgstr "Indtast et <a href=\"@icon_api\">Backdrop-kerneikonnavn</a>, en emoji, et Unicode-tegn eller almindelig tekst. HTML understøttes ikke.<br />Anbefalede ikoner fra <em>core/misc/icons</em>: <strong>archive</strong>, <strong>clock-counter-clockwise</strong>, <strong>rewind</strong> eller <strong>hourglass</strong>. <br />Alternativt kan du bruge emojis som <a href=\"@classical_building\">🏛️</a> (klassisk bygning), <a href=\"@floppy\">💾</a> (diskette) eller <a href=\"@circlearrow\">⟲</a> (cirkelpil)."
+
+#: wayback_filter.module:429
+msgid "Link title for the Wayback link"
+msgstr "Linktitel for Wayback-linket"
+
+#: wayback_filter.module:432
+msgid "This is what desktop users get to read when their cursor hovers over the Wayback link."
+msgstr "Dette er teksten desktopbrugere ser, når markøren holdes over Wayback-linket."
+
+#: wayback_filter.module:437
+msgid "Place Wayback links on nodes older than..."
+msgstr "Placer Wayback-links på indhold ældre end..."
+
+#: wayback_filter.module:442
+msgid "Nodes older than this many years will get a trailing Wayback link. Set to 0 to show on all articles."
+msgstr "Indhold ældre end dette antal år får et efterfølgende Wayback-link. Sæt til 0 for at vise på alle artikler."
+
+#: wayback_filter.module:449
+msgid "Preview of a link with a trailing Wayback link"
+msgstr "Forhåndsvisning af et link med et efterfølgende Wayback-link"
+
+#: wayback_filter.module:454
+msgid "Advanced help"
+msgstr "Avanceret hjælp"
+
+#: wayback_filter.module:454
+msgid "Most people will be able to see emojis and Unicode characters, even if they differ a bit between platforms. Only desktop users will be able to see the link title and only when their cursor hovers over the Wayback link. The Wayback link can be styled by adding styles to the CSS class <em>wayback-link</em> (for example, <em>.wayback-link {font-size: 0.8rem; color: red;}</em> somewhere in your stylesheet will make the Wayback link small and red). HTML is not supported in the icon field.<br />If you wish to paste actual emojis into any of the above fields, you should make sure that your database is <a href=\"@utf8mb4\">utf8mb4</a>. Since you are running this on a Backdrop site, it probably is.<br><br>"
+msgstr "De fleste vil kunne se emojis og Unicode-tegn, selv om de kan se lidt forskellige ud på tværs af platforme. Kun desktopbrugere kan se linktitlen, og kun når markøren holdes over Wayback-linket. Wayback-linket kan styles ved at tilføje CSS til klassen <em>wayback-link</em> (for eksempel vil <em>.wayback-link {font-size: 0.8rem; color: red;}</em> et sted i dit stylesheet gøre Wayback-linket lille og rødt). HTML understøttes ikke i ikonfeltet.<br />Hvis du vil indsætte faktiske emojis i et af felterne ovenfor, bør du sikre dig, at din database er <a href=\"@utf8mb4\">utf8mb4</a>. Da du kører på et Backdrop-site, er den det sandsynligvis.<br><br>"
+
+#: wayback_filter.module:458
+msgid "<strong>Nice to know</strong><br>The Wayback Filter works only in view mode <em>full</em>. The filter looks at the created date of the node, and tries to find the closest match at archive.org. That is: if your node was created on christmas morning 2011, it will link to the christmas morning 2011 versions of the link destination pages. Do they exist? Often they do. Give or take some days or weeks. If you want to be absolutely sure that archived versions of your link destination exists, use <a href=\"https://web.archive.org/\">the relevant browser extension at the Wayback Machine</a> (look under <em>Tools</em>) to produce an 1-click archived version."
+msgstr "<strong>Godt at vide</strong><br>Wayback Filter fungerer kun i visningstilstanden <em>full</em>. Filteret ser på indholdets oprettelsesdato og forsøger at finde det nærmeste match på archive.org. Det betyder: hvis dit indhold blev oprettet julemorgen 2011, vil det linke til versioner af linkmålene fra julemorgen 2011. Findes de? Ofte gør de. Plus/minus nogle dage eller uger. Hvis du vil være helt sikker på, at arkiverede versioner af dine linkmål findes, så brug <a href=\"https://web.archive.org/\">den relevante browserudvidelse fra Wayback Machine</a> (se under <em>Tools</em>) til at oprette en arkiveret version med ét klik."
+
+#: wayback_filter.module:462
+msgid "Note: Most people are satisfied with <a href=\"@url\">adding Wayback Links to text formats using the Configure-button</a>"
+msgstr "Bemærk: De fleste er tilfredse med <a href=\"@url\">at tilføje Wayback-links til tekstformater via knappen Konfigurer</a>"
+
+#: wayback_filter.module:462
+msgid "You should probably do it right after you have saved this form.<br>Yet...If you want to add Wayback Links to a host of different link fields, go ahead:"
+msgstr "Du bør sandsynligvis gøre det lige efter, at du har gemt denne formular.<br>Men... hvis du vil tilføje Wayback-links til en række forskellige linkfelter, så fortsæt bare:"
+
+#: wayback_filter.module:470
+msgid "Experimental: Field Names"
+msgstr "Eksperimentelt: Feltnavne"
+
+#: wayback_filter.module:472
+msgid "Enter the machine names of the fields to apply the filter. One per line. I.e.<br><em>field_link</em><br><em>field_url</em><br>- For every <a href=\"@url\">content type</a> you can press <em>Manage fields</em> to get a list of <em>Machine names</em>. Yes, these are the names you should use here."
+msgstr "Indtast maskinnavnene på de felter, hvor filteret skal bruges. Ét navn pr. linje, f.eks.<br><em>field_link</em><br><em>field_url</em><br>- For hver <a href=\"@url\">indholdstype</a> kan du klikke på <em>Administrer felter</em> for at få en liste over <em>maskinnavne</em>. Ja, det er disse navne, du skal bruge her."
 
 #: wayback_filter.info:0
 msgid "Wayback Filter"
-msgstr ""
+msgstr "Wayback Filter"
 
 #: wayback_filter.info:0
 msgid "Add links to pages on Wayback Machine for old articles"
 msgstr "Tilføj links til sider på Wayback Machine for ældre atikler."
-

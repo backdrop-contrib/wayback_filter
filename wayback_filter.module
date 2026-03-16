@@ -1,35 +1,129 @@
 <?php
 
 /**
- * Add links to pages on Wayback Machine for old articles
- * Coded by Martin Joergensen, Vertikal.dk, March 2014
- * */
+ * @file
+ * Add links to pages on Wayback Machine for old articles.
+ *
+ * Coded by Martin Joergensen, Vertikal.dk, March 2014.
+ * Ported to Backdrop CMS in February 2026.
+ */
 
 DEFINE('WAYBACK_FIRST_YEAR', 1996);
- 
+DEFINE('WAYBACK_FILTER_DEFAULT_ICON', '&#127963;&#65039;');
+
 /**
- * Implements hook_perm()
+ * Convert the configured icon to a DB-safe value.
+ *
+ * Backdrop writes config as UTF-8 JSON, but some sites use a DB connection
+ * charset that cannot store 4-byte emoji directly. Store non-ASCII chars as
+ * numeric entities so config writes do not fail.
+ */
+function _wayback_filter_normalize_icon($icon) {
+  $icon = trim((string) $icon);
+  if ($icon === '') {
+    return WAYBACK_FILTER_DEFAULT_ICON;
+  }
+
+  if (preg_match('/[^\x00-\x7F]/', $icon)) {
+    $icon = preg_replace_callback('/./us', '_wayback_filter_icon_entity_callback', $icon);
+  }
+
+  return $icon;
+}
+
+/**
+ * Convert a stored icon value into display output.
+ *
+ * Machine names are rendered through Backdrop's Icon API with immutable core
+ * preference, while emoji and plain text are escaped for safe output.
+ */
+function _wayback_filter_icon_for_output($icon, $alt = NULL) {
+  $icon = trim((string) $icon);
+  if ($icon === '') {
+    $icon = WAYBACK_FILTER_DEFAULT_ICON;
+  }
+
+  // If the Icon API is available and the icon value looks like a machine name,
+  // render the icon with immutable core preference.
+  if (function_exists('icon') && preg_match('/^[a-z0-9-]+$/', $icon)) {
+    $icon_path = icon_get_path($icon, TRUE);
+    if ($icon_path) {
+      return icon($icon, array(
+        'alt' => $alt,
+        'immutable' => TRUE,
+        'attributes' => array('class' => array('wayback-icon')),
+      ));
+    }
+  }
+
+  return check_plain(html_entity_decode($icon, ENT_QUOTES, 'UTF-8'));
+}
+
+/**
+ * Callback for encoding icon characters as numeric entities.
+ */
+function _wayback_filter_icon_entity_callback($matches) {
+  $character = $matches[0];
+  if (strlen($character) === 1 && ord($character) < 128) {
+    return $character;
+  }
+
+  $codepoint = _wayback_filter_codepoint_from_utf8($character);
+  return ($codepoint !== FALSE) ? '&#' . $codepoint . ';' : $character;
+}
+
+/**
+ * Convert one UTF-8 character to its codepoint.
+ */
+function _wayback_filter_codepoint_from_utf8($character) {
+  $bytes = unpack('C*', $character);
+  if (empty($bytes)) {
+    return FALSE;
+  }
+
+  $bytes = array_values($bytes);
+  $byte1 = $bytes[0];
+  $count = count($bytes);
+
+  if ($byte1 <= 0x7F) {
+    return $byte1;
+  }
+  if ($count >= 2 && $byte1 >= 0xC2 && $byte1 <= 0xDF) {
+    return (($byte1 & 0x1F) << 6) | ($bytes[1] & 0x3F);
+  }
+  if ($count >= 3 && $byte1 >= 0xE0 && $byte1 <= 0xEF) {
+    return (($byte1 & 0x0F) << 12) | (($bytes[1] & 0x3F) << 6) | ($bytes[2] & 0x3F);
+  }
+  if ($count >= 4 && $byte1 >= 0xF0 && $byte1 <= 0xF4) {
+    return (($byte1 & 0x07) << 18) | (($bytes[1] & 0x3F) << 12) | (($bytes[2] & 0x3F) << 6) | ($bytes[3] & 0x3F);
+  }
+
+  return FALSE;
+}
+
+/**
+ * Implements hook_permission().
  */
 function wayback_filter_permission() {
   return array(
     'access wayback filter setup' => array(
-    'title' => t('Access Wayback Filter setup'),
-    'description' => t('Allow user to change settings for Wayback Filter.'),
+      'title' => t('Access Wayback Filter setup'),
+      'description' => t('Allow user to change settings for Wayback Filter.'),
     ),
   );
 }
 
 
 /**
-* Implement hook_menu()
-**/
+ * Implements hook_menu().
+ */
 function wayback_filter_menu() {
   $items = array();
 
   $items['admin/config/content/wayback'] = array(
     'title' => 'Wayback',
     'description' => 'Set up Wayback filter.',
-    'page callback' => 'drupal_get_form',
+    'page callback' => 'backdrop_get_form',
     'page arguments' => array('wayback_filter_setup_form'),
     'type' => MENU_NORMAL_ITEM,
     'access arguments' => array('access wayback filter setup'),
@@ -40,14 +134,14 @@ function wayback_filter_menu() {
 
 
 /**
-* Implement hook_filter_info()
-**/
+ * Implements hook_filter_info().
+ */
 function wayback_filter_filter_info() {
   $filters = array();
 
   $filters['wayback_filter'] = array(
-    'title' => t('Add Wayback links'), 
-    'description' => t('Add links to pages on Wayback Machine for old articles.'), 
+    'title' => t('Add Wayback links'),
+    'description' => t('Add links to pages on Wayback Machine for old articles.'),
     'process callback' => '_wayback_filter_filter_process',
     'tips callback' => '_wayback_filter_filter_tips',
   );
@@ -57,113 +151,351 @@ function wayback_filter_filter_info() {
 
 
 /**
- * Callback for replacing aliased a href codes
- * */
+ * Implements hook_config_info().
+ */
+function wayback_filter_config_info() {
+  $prefixes['wayback_filter.settings'] = array(
+    'label' => t('Wayback Filter settings'),
+    'group' => t('Configuration'),
+  );
+  return $prefixes;
+}
+
+
+/**
+ * Filter process callback.
+ *
+ * This is a no-op. The actual link processing is done in
+ * wayback_filter_preprocess_node() where the node is guaranteed to be
+ * available. The filter is registered so it appears in the text format UI
+ * and so admins can enable/disable it per format.
+ */
 function _wayback_filter_filter_process($text, $filter, $format) {
-  // If not showing node, simply retuurn text
-  if (!(arg(0) == 'node' && is_numeric(arg(1)) && !arg(2))) {
-    return $text;
+  return $text;
+}
+
+
+/**
+ * Filter tips callback.
+ */
+function _wayback_filter_filter_tips() {
+  return t('Add links to Archive.org\'s Wayback Machine for URLs on old articles to ensure that the user can see something when pages have died.');
+}
+
+
+/**
+ * Implements hook_library_info().
+ */
+function wayback_filter_library_info() {
+  $libraries['wayback_filter'] = array(
+    'title' => 'Wayback Filter',
+    'version' => '1.x-1.0',
+    'css' => array(
+      backdrop_get_path('module', 'wayback_filter') . '/css/wayback_filter.css' => array(),
+    ),
+  );
+
+  return $libraries;
+}
+
+
+/**
+ * Implements hook_preprocess_page().
+ */
+function wayback_filter_preprocess_page(&$variables) {
+  backdrop_add_library('wayback_filter', 'wayback_filter');
+}
+
+
+/**
+ * Implements hook_preprocess_node().
+ *
+ * Processes the rendered fields to add Wayback Machine links to external
+ * URLs. This approach matches the Drupal 11 version of the module and avoids
+ * the filter caching issue where text filters run during entity load before
+ * any page context exists.
+ */
+function wayback_filter_preprocess_node(&$variables) {
+  // Only process full node view, matching D11 behavior.
+  if ($variables['view_mode'] !== 'full') {
+    return;
   }
 
-  // Is the node old enough? Else return text
-  $nid = arg(1);
-  $node = node_load($nid);
-	$use_age = variable_get('wayback_filter_date_or_age', 0);
-	if ($use_age) {
-		$years = strtotime('-' . variable_get('wayback_filter_relative_age', 0) . ' years');
-		$cutting_date = $years;
-	}
-	else {
-		$cutting_date =  strtotime(variable_get('wayback_filter_cutting_date', date('Y-m-d')));
-	}
-  
-  if ($node->created > $cutting_date) {
-    return $text;
+  $config = config('wayback_filter.settings');
+  $node = $variables['node'];
+
+  // When to employ Wayback links?
+  $waybacklink_start = (int) $config->get('waybacklink_start');
+  if ($waybacklink_start > 0) {
+    $waybacklink_start_date = strtotime('-' . $waybacklink_start . ' years');
+  }
+  else {
+    // Always show if set to 0.
+    $waybacklink_start_date = PHP_INT_MAX;
   }
 
-  // Find <a codes
+  // Don't bother with new nodes.
+  if ($node->created > $waybacklink_start_date) {
+    return;
+  }
+
+  // Always process body text when the filter is enabled for its text format.
+  if (isset($variables['content']['body'][0]['#markup']) && _wayback_filter_is_enabled_for_node($node)) {
+    $text = $variables['content']['body'][0]['#markup'];
+    $processed = _wayback_filter_process_text($text, $node);
+    $variables['content']['body'][0]['#markup'] = $processed;
+  }
+
+  // Process additional experimental fields if configured.
+  $field_names = array_map('trim', (array) $config->get('field_link'));
+  $field_names = array_values(array_filter($field_names));
+
+  foreach ($field_names as $field_name) {
+    if ($field_name === 'body' || !isset($variables['content'][$field_name])) {
+      continue;
+    }
+
+    // Handling for other fields (likely Link fields).
+    $field_info = field_info_instance('node', $field_name, $node->type);
+    if ($field_info && isset($variables['content'][$field_name])) {
+      $time = date('YmdHis', $node->created);
+      $title = $config->get('waybacklink_title') ?: t('Click to see an archived version of the destination page.');
+      $icon = _wayback_filter_icon_for_output($config->get('waybacklink_icon'), $title);
+
+      // Iterate through field items in the content array.
+      foreach (element_children($variables['content'][$field_name]) as $delta) {
+        $element = &$variables['content'][$field_name][$delta];
+
+        // In Backdrop, for link fields, the render array usually has '#element'
+        // or properties depending on the formatter.
+        // If it's the default 'Link' formatter, it might have '#href'.
+        if (isset($element['#href'])) {
+          $uri = $element['#href'];
+          if (substr($uri, 0, 7) == 'http://' || substr($uri, 0, 8) == 'https://') {
+            if (substr($uri, 0, 22) != 'https://web.archive.org') {
+              $wayback_url = 'https://web.archive.org/web/' . $time . '/' . $uri;
+
+              $variables['content'][$field_name][] = array(
+                '#type' => 'link',
+                '#title' => '<span class="waybacklink_icon">' . $icon . '</span>',
+                '#href' => $wayback_url,
+                '#options' => array(
+                  'attributes' => array(
+                    'class' => array('wayback-link'),
+                    'title' => $title,
+                  ),
+                  'html' => TRUE,
+                ),
+              );
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+
+/**
+ * Check if the wayback_filter is enabled for the text format used by a node's
+ * body field.
+ */
+function _wayback_filter_is_enabled_for_node($node) {
+  $langcode = field_language('node', $node, 'body');
+  if (!isset($node->body[$langcode][0]['format'])) {
+    return FALSE;
+  }
+  $format_id = $node->body[$langcode][0]['format'];
+  $format = filter_format_load($format_id);
+  if (!$format) {
+    return FALSE;
+  }
+  return !empty($format->filters['wayback_filter']->status);
+}
+
+
+/**
+ * Process text to add Wayback Machine links to external URLs.
+ */
+function _wayback_filter_process_text($text, $node) {
+  $config = config('wayback_filter.settings');
+  $mode = $config->get('waybacklink_mode') ?: 'append';
+  $title = $config->get('waybacklink_title') ?: t('Click to see an archived version of the destination page.');
+  $icon = _wayback_filter_icon_for_output($config->get('waybacklink_icon'), $title);
+  $time = date('YmdHis', $node->created);
+
+  // Find <a> tags - using the same regex as the original D7 module.
   $regexp = "<a\s[^>]*href=(\"??)([^\" >]*?)\\1[^>]*>(.*)<\/a>";
   preg_match_all("/$regexp/siU", $text, $result);
+  $done = array();
 
-  // Go through each 
   foreach ($result[0] as $orig_code) {
+    if (isset($done[$orig_code])) {
+      continue;
+    }
 
-    // Find hrefs
+    // Find hrefs - try double quotes first, then single quotes.
     preg_match('/href="([^"]*)"/i', $orig_code, $href);
-    if ($href) {
-      // Work on http(s):// refs only
+    if (!$href) {
+      preg_match("/href='([^']*)'/i", $orig_code, $href);
+    }
+
+    if ($href && !isset($done[$href[1]])) {
       if (substr($href[1], 0, 7) == 'http://' || substr($href[1], 0, 8) == 'https://') {
-        // Create wayback link
-        $time = date('YmdHis', $node->created);
-        $wayback = 'https://web.archive.org/web/' . $time . '/' . $href[1];
-        $wayback = $orig_code . ' [<a title="' .
-          t('This link can take you to the Archive.org-version of the page if the original site is dead') .
-          '" class="wayback-link" href="' . $wayback . '">' . t('Wayback-link') . '</a>]';
-        // Replace with added Wayback-link
-        $text = str_replace($orig_code, $wayback, $text);
+        // Skip existing Wayback links.
+        if (strpos($href[1], 'https://web.archive.org') === 0) {
+          $done[$href[1]] = TRUE;
+          continue;
+        }
+
+        // Create wayback link.
+        $wayback_url = 'https://web.archive.org/web/' . $time . '/' . $href[1];
+
+        if ($mode === 'replace') {
+          // Replace original link's href with Wayback href.
+          $replaced = preg_replace('/\bhref="[^"]*"/i', 'href="' . $wayback_url . '"', $orig_code, 1);
+          $replaced = preg_replace("/\bhref='[^']*'/i", "href='" . $wayback_url . "'", $replaced, 1);
+
+          // Ensure it has a helpful title (only add if missing).
+          if (!preg_match('/\btitle="/i', $replaced) && !preg_match("/\btitle='/i", $replaced)) {
+            $replaced = preg_replace('/<a\b/i', '<a title="' . check_plain($title) . '"', $replaced, 1);
+          }
+
+          // Add/merge class "wayback-link" on the replaced link.
+          if (preg_match('/\bclass="([^"]*)"/i', $replaced, $m)) {
+            $new_class = trim($m[1] . ' wayback-link');
+            $replaced = preg_replace('/\bclass="[^"]*"/i', 'class="' . $new_class . '"', $replaced, 1);
+          }
+          elseif (preg_match("/\bclass='([^']*)'/i", $replaced, $m)) {
+            $new_class = trim($m[1] . ' wayback-link');
+            $replaced = preg_replace("/\bclass='[^']*'/i", "class='" . $new_class . "'", $replaced, 1);
+          }
+          else {
+            $replaced = preg_replace('/<a\b/i', '<a class="wayback-link"', $replaced, 1);
+          }
+          $text = str_replace($orig_code, $replaced, $text);
+        }
+        else {
+          // Default: append the Wayback link after the original.
+          $wayback = $orig_code . ' <a title="' . check_plain($title) . '" class="wayback-link" href="' . $wayback_url . '">' .
+                     '<span class="waybacklink_icon">' . $icon . '</span></a>';
+          $text = str_replace($orig_code, $wayback, $text);
+        }
+
+        $done[$orig_code] = TRUE;
+        $done[$href[1]] = TRUE;
       }
     }
   }
   return $text;
 }
 
-
 /**
- * Callback for filter tips
- * */
-function _wayback_filter_filter_tips_magazine() {
-  return t('Add links to Archive.org\'s Waybback Machine for URLs on old articles to ensure that the user can see something when pages have died.');
+ * Element validator for the configured icon value.
+ */
+function wayback_filter_waybacklink_icon_validate($element, &$form_state) {
+  $icon = trim((string) $element['#value']);
+  if ($icon !== '' && preg_match('/<[^>]+>/', $icon)) {
+    form_error($element, t('Enter a Backdrop core icon name, an emoji, or plain text. HTML is not supported.'));
+  }
 }
 
 
 /**
- * Setup form for cutting date
- * */
+ * Form constructor for the Wayback Filter configuration form.
+ */
 function wayback_filter_setup_form($form) {
+  $config = config('wayback_filter.settings');
 
+  $form['#config'] = 'wayback_filter.settings';
 
-	$form['wayback_filter_date_or_age'] = array(
+  $form['waybacklink_mode'] = array(
     '#type' => 'radios',
-		'#options' => array(0 => t('Cutting date'), 1 => t('Relative age')),
-    '#title' => t('Cutting date or relative age'),
-    '#default_value' => variable_get('wayback_filter_date_or_age', 0),
-    '#description' => t('Select whether to use cutting date or relative age for the Wayback filter. Set the selected value(s) below.'),
+    '#title' => t('Wayback link behaviour'),
+    '#options' => array(
+      'append' => t('Append the Wayback Link (recommended)'),
+      'replace' => t('Replace the original link with the Wayback Link'),
+    ),
+    '#default_value' => $config->get('waybacklink_mode') ?: 'append',
+    '#description' => t('Choose whether to add a Wayback link after the original link, or replace the original link entirely.'),
   );
 
-	$form['wayback_filter_cutting_date_field'] = array(
-		'#type' => 'fieldset',
-    '#title' => t('Cutting date'),
-	);
-	
-  $form['wayback_filter_cutting_date_field']['wayback_filter_cutting_date'] = array(
-    '#type' => 'date_popup',
-    '#date_format' => 'Y-m-d',
-    '#date_year_range' => WAYBACK_FIRST_YEAR . ':0',
-    '#default_value' => variable_get('wayback_filter_cutting_date', date('Y-m-d')),
-    '#description' => t('Cutting date to use for the Wayback filter. Articles older than this date has the filter, younger articles don\'t.'),
+  $form['waybacklink_icon'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Icon or text for the Wayback link'),
+    '#size' => 40,
+    '#default_value' => $config->get('waybacklink_icon') ?: _wayback_filter_icon_for_output(''),
+    '#element_validate' => array('wayback_filter_waybacklink_icon_validate'),
+    '#description' => t('Enter a <a href="@icon_api">Backdrop core icon name</a>, an emoji, a Unicode character, or plain text. HTML is not supported.<br />Recommended icons from <em>core/misc/icons</em>: <strong>archive</strong>, <strong>clock-counter-clockwise</strong>, <strong>rewind</strong>, or <strong>hourglass</strong>. <br />Alternatively, you can use emojis like <a href="@classical_building">🏛️</a> (classical building), <a href="@floppy">💾</a> (floppy disk), or <a href="@circlearrow">⟲</a> (circle arrow).', array(
+      '@icon_api' => 'https://docs.backdropcms.org/documentation/icon-api',
+      '@classical_building' => 'https://emojipedia.org/search/?q=building',
+      '@floppy' => 'https://emojipedia.org/search/?q=floppy',
+      '@circlearrow' => 'https://www.compart.com/en/unicode/U+27F2',
+    )),
   );
 
-	$first_year = date('Y');
-	$options = array();
-	while($first_year >= WAYBACK_FIRST_YEAR) {
-		$age = date('Y') - $first_year;
-		$options[$age] = $age;
-		$first_year--;
-	}
-
-	$form['wayback_filter_cutting_first_year_field'] = array(
-		'#type' => 'fieldset',
-		'#title' => t('Relative age'),
-	);
-	
-	$form['wayback_filter_cutting_first_year_field']['wayback_filter_relative_age'] = array(
-    '#type' => 'select',
-		'#options' => $options,
-    '#default_value' => variable_get('wayback_filter_relative_age', 0),
-    '#description' => t('Relative age for Wayback filter. Articles older than this number of years has the filter, younger articles don\'t.'),
+  $form['waybacklink_title'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Link title for the Wayback link'),
+    '#size' => 40,
+    '#default_value' => $config->get('waybacklink_title') ?: t('Click to see an archived version of the destination page.'),
+    '#description' => t('This is what desktop users get to read when their cursor hovers over the Wayback link.'),
   );
 
-	
+  $form['waybacklink_start'] = array(
+    '#type' => 'number',
+    '#title' => t('Place Wayback links on nodes older than...'),
+    '#min' => 0,
+    '#max' => 30,
+    '#field_suffix' => 'years',
+    '#default_value' => $config->get('waybacklink_start') ?: 3,
+    '#description' => t('Nodes older than this many years will get a trailing Wayback link. Set to 0 to show on all articles.'),
+  );
+
+  $preview_title = $config->get('waybacklink_title') ?: t('Click to see an archived version of the destination page.');
+  $preview_icon = _wayback_filter_icon_for_output($config->get('waybacklink_icon'), $preview_title);
+
+  $form['waybacklink_preview'] = array(
+    '#markup' => '<div class="form-item__label">' . t('Preview of a link with a trailing Wayback link') . '</div> <a href="https://vertikal.dk/linkrot-solved-problem">Linkrot is a solved problem</a> <a href="https://web.archive.org/web/20210701194421/https://vertikal.dk/linkrot-solved-problem" title="' . check_plain($preview_title) . '" class="wayback-link" id="waybacklink_preview"><span class="waybacklink_icon">' . $preview_icon . '</span></a>',
+  );
+
+  $form['waybacklink_help'] = array(
+    '#markup' => '<br><br><div class="form-item__label">' . t('Advanced help') . '</div>' . t('Most people will be able to see emojis and Unicode characters, even if they differ a bit between platforms. Only desktop users will be able to see the link title and only when their cursor hovers over the Wayback link. The Wayback link can be styled by adding styles to the CSS class <em>wayback-link</em> (for example, <em>.wayback-link {font-size: 0.8rem; color: red;}</em> somewhere in your stylesheet will make the Wayback link small and red). HTML is not supported in the icon field.<br />If you wish to paste actual emojis into any of the above fields, you should make sure that your database is <a href="@utf8mb4">utf8mb4</a>. Since you are running this on a Backdrop site, it probably is.<br><br>', array('@utf8mb4' => 'https://www.eversql.com/mysql-utf8-vs-utf8mb4-whats-the-difference-between-utf8-and-utf8mb4/')),
+  );
+
+  $form['nicetoknow'] = array(
+    '#markup' => t('<strong>Nice to know</strong><br>The Wayback Filter works only in view mode <em>full</em>. The filter looks at the created date of the node, and tries to find the closest match at archive.org. That is: if your node was created on christmas morning 2011, it will link to the christmas morning 2011 versions of the link destination pages. Do they exist? Often they do. Give or take some days or weeks. If you want to be absolutely sure that archived versions of your link destination exists, use <a href="https://web.archive.org/">the relevant browser extension at the Wayback Machine</a> (look under <em>Tools</em>) to produce an 1-click archived version.'),
+  );
+
+  $form['warning'] = array(
+    '#markup' => '<h3>' . t('Note: Most people are satisfied with <a href="@url">adding Wayback Links to text formats using the Configure-button</a>', array('@url' => url('admin/config/content/formats'))) . '</h3>' . t('You should probably do it right after you have saved this form.<br>Yet...If you want to add Wayback Links to a host of different link fields, go ahead:'),
+  );
+
+  $configured_fields = array_map('trim', (array) $config->get('field_link'));
+  $configured_fields = array_values(array_filter($configured_fields));
+
+  $form['field_link'] = array(
+    '#type' => 'textarea',
+    '#title' => t('Experimental: Field Names'),
+    '#default_value' => implode("\n", $configured_fields),
+    '#description' => t('Enter the machine names of the fields to apply the filter. One per line. I.e.<br><em>field_link</em><br><em>field_url</em><br>- For every <a href="@url">content type</a> you can press <em>Manage fields</em> to get a list of <em>Machine names</em>. Yes, these are the names you should use here.', array('@url' => url('admin/structure/types'))),
+  );
+
+  $form['#submit'][] = 'wayback_filter_setup_form_submit';
+
   return system_settings_form($form);
 }
 
+/**
+ * Submit handler for the configuration form.
+ */
+function wayback_filter_setup_form_submit($form, &$form_state) {
+  // Convert the textarea back to an array.
+  $fields = explode("\n", $form_state['values']['field_link']);
+  $fields = array_map('trim', $fields);
+  $fields = array_filter($fields);
+  $form_state['values']['field_link'] = array_values($fields);
+
+  $icon = isset($form_state['values']['waybacklink_icon']) ? $form_state['values']['waybacklink_icon'] : '';
+  $form_state['values']['waybacklink_icon'] = _wayback_filter_normalize_icon($icon);
+}

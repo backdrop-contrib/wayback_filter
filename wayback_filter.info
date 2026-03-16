@@ -1,6 +1,6 @@
 name = Wayback Filter
 description = Enhance links in old articles with links to The Wayback Machine.
-core = 7.x
-version = 7.x-1.0
+backdrop = 1.x
+type = module
 configure = admin/config/content/wayback
 

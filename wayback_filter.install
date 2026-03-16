@@ -1,0 +1,47 @@
+<?php
+
+/**
+ * @file
+ * Install, update and uninstall functions for the wayback_filter module.
+ */
+
+
+/**
+ * Migrate wayback_filter variables to config.
+ */
+function wayback_filter_update_1000() {
+  $config = config('wayback_filter.settings');
+  $data = array(
+    'wayback_filter_relative_age' => update_variable_get('wayback_filter_relative_age', '3'),
+    'waybacklink_mode' => 'append',
+    'waybacklink_icon' => '&#127963;&#65039;',
+    'waybacklink_title' => 'Click to see an archived version of the destination page.',
+    'waybacklink_start' => update_variable_get('wayback_filter_relative_age', '3'),
+    'field_link' => array(),
+  );
+  $config->setData($data);
+  $config->save();
+
+  update_variable_del('wayback_filter_date_or_age');
+  update_variable_del('wayback_filter_relative_age');
+  update_variable_del('wayback_filter_cutting_date');
+}
+
+/**
+ * Normalize the icon config to a DB-safe value.
+ */
+function wayback_filter_update_1001() {
+  module_load_include('module', 'wayback_filter');
+
+  $config = config('wayback_filter.settings');
+  $icon = $config->get('waybacklink_icon');
+  if ($icon === NULL || !function_exists('_wayback_filter_normalize_icon')) {
+    return;
+  }
+
+  $normalized = _wayback_filter_normalize_icon($icon);
+  if ($normalized !== $icon) {
+    $config->set('waybacklink_icon', $normalized);
+    $config->save();
+  }
+}

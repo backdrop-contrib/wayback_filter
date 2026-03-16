@@ -1,0 +1,8 @@
+{
+    "_config_name": "wayback_filter.settings",
+    "waybacklink_mode": "append",
+    "waybacklink_icon": "&#127963;&#65039;",
+    "waybacklink_title": "Click to see an archived version of the destination page.",
+    "waybacklink_start": "3",
+    "field_link": []
+}
